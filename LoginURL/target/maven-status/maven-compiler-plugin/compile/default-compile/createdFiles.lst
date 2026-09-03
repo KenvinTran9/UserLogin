@@ -1,0 +1,12 @@
+com\app\model\Category.class
+com\app\service\UserService.class
+com\app\controller\LogoutServlet.class
+com\app\dao\UserDAO.class
+com\app\service\CategoryService.class
+com\app\controller\LoginServlet.class
+com\app\controller\ErrorServlet.class
+com\app\model\User.class
+com\app\controller\CategoryServlet.class
+com\app\controller\HomeServlet.class
+com\app\dao\MongoDBConnection.class
+com\app\dao\CategoryDAO.class
