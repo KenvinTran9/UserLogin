@@ -3,22 +3,9 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thêm Danh Mục - LoginURL</title>
-    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand">📋 LoginURL App</div>
-        <div class="nav-links">
-            <a href="${pageContext.request.contextPath}/home" class="nav-link">🏠 Trang Chủ</a>
-            <a href="${pageContext.request.contextPath}/category" class="nav-link active">📂 Danh Mục</a>
-            <span class="nav-user">👤 ${sessionScope.fullName}</span>
-            <a href="${pageContext.request.contextPath}/logout" class="nav-link nav-logout">🚪 Đăng Xuất</a>
-        </div>
-    </nav>
-
     <div class="container">
         <div class="form-card">
             <h2>➕ Thêm Danh Mục Mới</h2>

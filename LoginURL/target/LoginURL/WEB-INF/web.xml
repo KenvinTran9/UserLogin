@@ -8,7 +8,7 @@
     <display-name>LoginURL</display-name>
 
     <welcome-file-list>
-        <welcome-file>login</welcome-file>
+        <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
 
     <!-- Session timeout: 30 minutes -->
