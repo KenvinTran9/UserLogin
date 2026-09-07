@@ -9,7 +9,7 @@ import jakarta.servlet.http.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.UUID;
+import java.util.*;
 
 @WebServlet(name = "ProfileServlet", urlPatterns = {"/profile"})
 @MultipartConfig(
@@ -20,6 +20,10 @@ import java.util.UUID;
 public class ProfileServlet extends HttpServlet {
     private UserService userService;
     private static final String UPLOAD_DIR = "uploads";
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/png", "image/gif", "image/jpg"
+    );
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
     @Override
     public void init() throws ServletException {
@@ -73,6 +77,53 @@ public class ProfileServlet extends HttpServlet {
 
         // Handle image upload
         Part imagePart = request.getPart("image");
+
+        // === SERVER-SIDE VALIDATION ===
+        Map<String, String> errors = new HashMap<>();
+
+        // Validate fullName (required, 2-100 chars)
+        if (fullName == null || fullName.trim().isEmpty()) {
+            errors.put("fullName", "Họ và tên không được để trống");
+        } else if (fullName.trim().length() < 2) {
+            errors.put("fullName", "Họ và tên phải có ít nhất 2 ký tự");
+        } else if (fullName.trim().length() > 100) {
+            errors.put("fullName", "Họ và tên không được vượt quá 100 ký tự");
+        }
+
+        // Validate phone (optional, but if entered must be 10-11 digits)
+        if (phone != null && !phone.trim().isEmpty()) {
+            String phoneClean = phone.trim();
+            if (!phoneClean.matches("^[0-9]{10,11}$")) {
+                errors.put("phone", "Số điện thoại phải gồm 10-11 chữ số");
+            }
+        }
+
+        // Validate image (type + size)
+        if (imagePart != null && imagePart.getSize() > 0) {
+            String contentType = imagePart.getContentType();
+            if (!ALLOWED_IMAGE_TYPES.contains(contentType)) {
+                errors.put("image", "Chỉ chấp nhận file ảnh JPG, PNG, GIF");
+            }
+            if (imagePart.getSize() > MAX_FILE_SIZE) {
+                errors.put("image", "Ảnh không được vượt quá 10MB");
+            }
+        }
+
+        // If validation errors, forward back
+        if (!errors.isEmpty()) {
+            request.setAttribute("errors", errors);
+            User user = userService.findById(userId);
+            if (user != null) {
+                // Update with submitted values for repopulation
+                user.setFullName(fullName);
+                user.setPhone(phone);
+            }
+            request.setAttribute("user", user);
+            request.getRequestDispatcher("/views/profile.jsp").forward(request, response);
+            return;
+        }
+
+        // Process image upload
         String imagePath = null;
         if (imagePart != null && imagePart.getSize() > 0) {
             imagePath = saveFile(imagePart, request);
