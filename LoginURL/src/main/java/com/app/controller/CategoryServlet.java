@@ -9,8 +9,7 @@ import jakarta.servlet.http.*;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @WebServlet(name = "CategoryServlet", urlPatterns = {"/category"})
 @MultipartConfig(
@@ -21,6 +20,10 @@ import java.util.UUID;
 public class CategoryServlet extends HttpServlet {
     private CategoryService categoryService;
     private static final String UPLOAD_DIR = "uploads";
+    private static final List<String> ALLOWED_IMAGE_TYPES = Arrays.asList(
+            "image/jpeg", "image/png", "image/gif", "image/jpg"
+    );
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
     @Override
     public void init() throws ServletException {
@@ -75,6 +78,48 @@ public class CategoryServlet extends HttpServlet {
             }
         }
         return null;
+    }
+
+    /**
+     * Validate category form fields
+     */
+    private Map<String, String> validateCategoryForm(String name, String description,
+                                                      Part imagePart, Part filePart) {
+        Map<String, String> errors = new HashMap<>();
+
+        // Validate name (required, 2-100 chars)
+        if (name == null || name.trim().isEmpty()) {
+            errors.put("name", "Tên danh mục không được để trống");
+        } else if (name.trim().length() < 2) {
+            errors.put("name", "Tên danh mục phải có ít nhất 2 ký tự");
+        } else if (name.trim().length() > 100) {
+            errors.put("name", "Tên danh mục không được vượt quá 100 ký tự");
+        }
+
+        // Validate description (max 500 chars)
+        if (description != null && description.trim().length() > 500) {
+            errors.put("description", "Mô tả không được vượt quá 500 ký tự");
+        }
+
+        // Validate image file (type + size)
+        if (imagePart != null && imagePart.getSize() > 0) {
+            String contentType = imagePart.getContentType();
+            if (!ALLOWED_IMAGE_TYPES.contains(contentType)) {
+                errors.put("image", "Chỉ chấp nhận file ảnh JPG, PNG, GIF");
+            }
+            if (imagePart.getSize() > MAX_FILE_SIZE) {
+                errors.put("image", "Ảnh không được vượt quá 10MB");
+            }
+        }
+
+        // Validate attached file (size)
+        if (filePart != null && filePart.getSize() > 0) {
+            if (filePart.getSize() > MAX_FILE_SIZE) {
+                errors.put("file", "File đính kèm không được vượt quá 10MB");
+            }
+        }
+
+        return errors;
     }
 
     @Override
@@ -154,20 +199,33 @@ public class CategoryServlet extends HttpServlet {
         if ("add".equals(action)) {
             String name = request.getParameter("name");
             String description = request.getParameter("description");
+            Part imagePart = request.getPart("image");
+            Part filePart = request.getPart("file");
+
+            // === SERVER-SIDE VALIDATION ===
+            Map<String, String> errors = validateCategoryForm(name, description, imagePart, filePart);
+
+            if (!errors.isEmpty()) {
+                request.setAttribute("errors", errors);
+                request.setAttribute("name", name);
+                request.setAttribute("description", description);
+                request.getRequestDispatcher("/views/category/add.jsp").forward(request, response);
+                return;
+            }
 
             // Handle image upload
-            Part imagePart = request.getPart("image");
             String imagePath = saveFile(imagePart, request);
 
             // Handle file upload
-            Part filePart = request.getPart("file");
             String filePath = saveFile(filePart, request);
             String fileName = (filePart != null && filePart.getSize() > 0) ? getFileName(filePart) : null;
 
             if (categoryService.addCategory(name, description, imagePath, filePath, fileName)) {
                 response.sendRedirect(request.getContextPath() + "/category?success=added");
             } else {
-                request.setAttribute("error", "Tên danh mục không được để trống!");
+                request.setAttribute("error", "Không thể thêm danh mục. Vui lòng thử lại!");
+                request.setAttribute("name", name);
+                request.setAttribute("description", description);
                 request.getRequestDispatcher("/views/category/add.jsp").forward(request, response);
             }
 
@@ -175,13 +233,28 @@ public class CategoryServlet extends HttpServlet {
             String id = request.getParameter("id");
             String name = request.getParameter("name");
             String description = request.getParameter("description");
+            Part imagePart = request.getPart("image");
+            Part filePart = request.getPart("file");
+
+            // === SERVER-SIDE VALIDATION ===
+            Map<String, String> errors = validateCategoryForm(name, description, imagePart, filePart);
+
+            if (!errors.isEmpty()) {
+                request.setAttribute("errors", errors);
+                Category category = categoryService.getCategoryById(id);
+                if (category != null) {
+                    category.setName(name);
+                    category.setDescription(description);
+                }
+                request.setAttribute("category", category);
+                request.getRequestDispatcher("/views/category/edit.jsp").forward(request, response);
+                return;
+            }
 
             // Handle image upload (null = keep old)
-            Part imagePart = request.getPart("image");
             String imagePath = saveFile(imagePart, request);
 
             // Handle file upload (null = keep old)
-            Part filePart = request.getPart("file");
             String filePath = saveFile(filePart, request);
             String fileName = (filePart != null && filePart.getSize() > 0) ? getFileName(filePart) : null;
 

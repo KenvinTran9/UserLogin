@@ -7,6 +7,8 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
 public class LoginServlet extends HttpServlet {
@@ -51,6 +53,30 @@ public class LoginServlet extends HttpServlet {
         String password = request.getParameter("password");
         String remember = request.getParameter("remember");
 
+        // === SERVER-SIDE VALIDATION ===
+        Map<String, String> errors = new HashMap<>();
+
+        if (username == null || username.trim().isEmpty()) {
+            errors.put("username", "Vui lòng nhập tên đăng nhập");
+        } else if (username.trim().length() < 3 || username.trim().length() > 50) {
+            errors.put("username", "Tên đăng nhập phải từ 3 đến 50 ký tự");
+        }
+
+        if (password == null || password.trim().isEmpty()) {
+            errors.put("password", "Vui lòng nhập mật khẩu");
+        } else if (password.trim().length() < 3 || password.trim().length() > 50) {
+            errors.put("password", "Mật khẩu phải từ 3 đến 50 ký tự");
+        }
+
+        // If validation errors, forward back to login
+        if (!errors.isEmpty()) {
+            request.setAttribute("errors", errors);
+            request.setAttribute("username", username);
+            request.getRequestDispatcher("/views/login.jsp").forward(request, response);
+            return;
+        }
+
+        // Attempt login
         User user = userService.login(username, password);
 
         if (user != null) {
@@ -77,10 +103,10 @@ public class LoginServlet extends HttpServlet {
 
             response.sendRedirect(request.getContextPath() + "/home");
         } else {
-            // Redirect to /error page
-            response.sendRedirect(request.getContextPath()
-                    + "/error?message=" + java.net.URLEncoder.encode(
-                    "Tên đăng nhập hoặc mật khẩu không đúng!", "UTF-8"));
+            // Login failed - show error inline on login page
+            request.setAttribute("error", "Tên đăng nhập hoặc mật khẩu không đúng!");
+            request.setAttribute("username", username);
+            request.getRequestDispatcher("/views/login.jsp").forward(request, response);
         }
     }
 }
